@@ -1,4 +1,4 @@
-require('dotenv').config(); // ✅ PALING ATAS
+
 
 const ADMIN_USERNAME = 'botpromomurah';
 const db = require('./db');
