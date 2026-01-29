@@ -1,20 +1,18 @@
 const mysql = require('mysql2');
 
 const db = mysql.createConnection({
-  host: process.env.MYSQLHOST,
-  user: process.env.MYSQLUSER,
-  password: process.env.MYSQLPASSWORD,
-  database: process.env.MYSQLDATABASE,
-  port: process.env.MYSQLPORT,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
+  ssl: { rejectUnauthorized: false }
 });
 
-db.connect((err) => {
+db.connect(err => {
   if (err) {
     console.error('❌ MySQL Railway connection failed:', err.message);
-    process.exit(1); // 🚨 HENTIKAN SERVICE BIAR JELAS
+    process.exit(1);
   }
   console.log('✅ MySQL Railway connected');
 });
