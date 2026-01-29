@@ -5,15 +5,18 @@ const db = mysql.createConnection({
   user: process.env.MYSQLUSER,
   password: process.env.MYSQLPASSWORD,
   database: process.env.MYSQLDATABASE,
-  port: process.env.MYSQLPORT
+  port: process.env.MYSQLPORT,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
-db.connect(err => {
+db.connect((err) => {
   if (err) {
-    console.error('❌ DB ERROR:', err);
-    return;
+    console.error('❌ MySQL Railway connection failed:', err.message);
+    process.exit(1); // 🚨 HENTIKAN SERVICE BIAR JELAS
   }
-  console.log('✅ Database connected');
+  console.log('✅ MySQL Railway connected');
 });
 
 module.exports = db;

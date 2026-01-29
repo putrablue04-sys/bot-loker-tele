@@ -1,9 +1,11 @@
+require('dotenv').config(); // ✅ PALING ATAS
+
 const ADMIN_USERNAME = 'botpromomurah';
 const db = require('./db');
 const TelegramBot = require('node-telegram-bot-api');
-require('dotenv').config();
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
+
 
 // ===============================
 // VAR GLOBAL (SATU KALI SAJA)
