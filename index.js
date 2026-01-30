@@ -69,7 +69,59 @@ bot.onText(/\/send (\-?\d+) (.+)/, (msg, match) => {
     });
   }, 5000);
 
+
   bot.sendMessage(msg.chat.id, `🚀 Mulai kirim ke ${groupId} tiap 5 detik`);
+});
+
+bot.onText(/\/sendall (.+)/, (msg, match) => {
+  if (msg.from.username !== ADMIN_USERNAME) {
+    return bot.sendMessage(msg.chat.id, '❌ Khusus admin');
+  }
+
+  const pesan = match[1];
+
+  if (sendInterval) {
+    return bot.sendMessage(msg.chat.id, '⚠️ Pengiriman sedang berjalan');
+  }
+
+  db.query('SELECT chat_id FROM telegram_groups', (err, rows) => {
+    if (err || rows.length === 0) {
+      return bot.sendMessage(msg.chat.id, '❌ Tidak ada grup');
+    }
+
+    let index = 0;
+
+    sendInterval = setInterval(() => {
+      if (index >= rows.length) {
+        clearInterval(sendInterval);
+        sendInterval = null;
+        return bot.sendMessage(msg.chat.id, '✅ Semua grup terkirim');
+      }
+
+      bot.sendMessage(rows[index].chat_id, pesan).catch(() => {});
+      index++;
+    }, 5000);
+  });
+});
+
+
+bot.onText(/\/addgroup (\-?\d+)/, (msg, match) => {
+  if (msg.from.username !== ADMIN_USERNAME) {
+    return bot.sendMessage(msg.chat.id, '❌ Khusus admin');
+  }
+
+  const groupId = match[1];
+
+  db.query(
+    'INSERT IGNORE INTO telegram_groups (chat_id, title) VALUES (?, ?)',
+    [groupId, 'Manual Group'],
+    (err) => {
+      if (err) {
+        return bot.sendMessage(msg.chat.id, '❌ Gagal simpan grup');
+      }
+      bot.sendMessage(msg.chat.id, '✅ Grup berhasil ditambahkan');
+    }
+  );
 });
 
 // ===============================
