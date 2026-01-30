@@ -7,6 +7,22 @@ const TelegramBot = require('node-telegram-bot-api');
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
 
+bot.on('my_chat_member', (msg) => {
+  const chat = msg.chat;
+
+  if (chat.type === 'group' || chat.type === 'supergroup') {
+    db.query(
+      'INSERT IGNORE INTO telegram_groups (chat_id, title) VALUES (?, ?)',
+      [chat.id, chat.title],
+      (err) => {
+        if (err) console.log('❌ DB error:', err);
+        else console.log(`✅ Bot masuk grup: ${chat.title}`);
+      }
+    );
+  }
+});
+
+
 // ===============================
 // VAR GLOBAL (SATU KALI SAJA)
 // ===============================
@@ -73,16 +89,17 @@ bot.onText(/\/send (\-?\d+) (.+)/, (msg, match) => {
   bot.sendMessage(msg.chat.id, `🚀 Mulai kirim ke ${groupId} tiap 5 detik`);
 });
 
+
 bot.onText(/\/sendall (.+)/, (msg, match) => {
   if (msg.from.username !== ADMIN_USERNAME) {
     return bot.sendMessage(msg.chat.id, '❌ Khusus admin');
   }
 
-  const pesan = match[1];
-
   if (sendInterval) {
     return bot.sendMessage(msg.chat.id, '⚠️ Pengiriman sedang berjalan');
   }
+
+  const pesan = match[1];
 
   db.query('SELECT chat_id FROM telegram_groups', (err, rows) => {
     if (err || rows.length === 0) {
@@ -90,19 +107,32 @@ bot.onText(/\/sendall (.+)/, (msg, match) => {
     }
 
     let index = 0;
+    sendInterval = true;
 
-    sendInterval = setInterval(() => {
-      if (index >= rows.length) {
-        clearInterval(sendInterval);
-        sendInterval = null;
-        return bot.sendMessage(msg.chat.id, '✅ Semua grup terkirim');
-      }
+    const kirimLoop = () => {
+      if (!sendInterval) return;
 
-      bot.sendMessage(rows[index].chat_id, pesan).catch(() => {});
+      const groupId = rows[index].chat_id;
+      console.log('KIRIM KE', groupId);
+
+      bot.sendMessage(groupId, pesan).catch(() => {});
+
       index++;
-    }, 5000);
+      if (index >= rows.length) index = 0;
+
+      setTimeout(kirimLoop, 5000);
+    };
+
+    kirimLoop();
+
+    bot.sendMessage(
+      msg.chat.id,
+      `🚀 Broadcast nonstop aktif\n🛑 Stop pakai /stop`
+    );
   });
 });
+
+
 
 
 bot.onText(/\/addgroup (\-?\d+)/, (msg, match) => {
@@ -136,7 +166,7 @@ bot.onText(/\/stop/, (msg) => {
     return bot.sendMessage(msg.chat.id, '⚠️ Tidak ada pengiriman aktif');
   }
 
-  clearInterval(sendInterval);
-  sendInterval = null;
-  bot.sendMessage(msg.chat.id, '🛑 Pengiriman dihentikan');
+  sendInterval = false;
+  bot.sendMessage(msg.chat.id, '🛑 Broadcast dihentikan');
 });
+
