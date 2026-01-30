@@ -26,7 +26,9 @@ bot.on('my_chat_member', (msg) => {
 // ===============================
 // VAR GLOBAL (SATU KALI SAJA)
 // ===============================
-let sendInterval = null;
+let sendInterval = null;     // khusus /send (single group)
+let broadcastRunning = false; // khusus /sendall
+
 
 // ===============================
 // SIMPAN GRUP SAAT BOT DIMASUKIN
@@ -90,47 +92,60 @@ bot.onText(/\/send (\-?\d+) (.+)/, (msg, match) => {
 });
 
 
+let broadcastTimer = null;
+let broadcastIndex = 0;
+let broadcastGroups = [];
+let broadcastMessage = '';
+
 bot.onText(/\/sendall (.+)/, (msg, match) => {
   if (msg.from.username !== ADMIN_USERNAME) {
     return bot.sendMessage(msg.chat.id, '❌ Khusus admin');
   }
 
-  if (sendInterval) {
-    return bot.sendMessage(msg.chat.id, '⚠️ Pengiriman sedang berjalan');
+  if (broadcastTimer) {
+    return bot.sendMessage(msg.chat.id, '⚠️ Broadcast sudah berjalan');
   }
 
-  const pesan = match[1];
+  broadcastMessage = match[1];
 
   db.query('SELECT chat_id FROM telegram_groups', (err, rows) => {
     if (err || rows.length === 0) {
       return bot.sendMessage(msg.chat.id, '❌ Tidak ada grup');
     }
 
-    let index = 0;
-    sendInterval = true;
+    broadcastGroups = rows;
+    broadcastIndex = 0;
 
-    const kirimLoop = () => {
-      if (!sendInterval) return;
+    broadcastTimer = setInterval(() => {
+      const groupId = broadcastGroups[broadcastIndex].chat_id;
+      console.log('📤 SEND KE', groupId);
 
-      const groupId = rows[index].chat_id;
-      console.log('KIRIM KE', groupId);
+      bot.sendMessage(groupId, broadcastMessage)
+        .catch(err => console.log('❌ ERROR', err.message));
 
-      bot.sendMessage(groupId, pesan).catch(() => {});
+      broadcastIndex++;
+      if (broadcastIndex >= broadcastGroups.length) {
+        broadcastIndex = 0;
+      }
+    }, 5000);
 
-      index++;
-      if (index >= rows.length) index = 0;
-
-      setTimeout(kirimLoop, 5000);
-    };
-
-    kirimLoop();
-
-    bot.sendMessage(
-      msg.chat.id,
-      `🚀 Broadcast nonstop aktif\n🛑 Stop pakai /stop`
-    );
+    bot.sendMessage(msg.chat.id, '🚀 Broadcast nonstop DIMULAI');
   });
 });
+
+bot.onText(/\/stop/, (msg) => {
+  if (msg.from.username !== ADMIN_USERNAME) return;
+
+  if (!broadcastTimer) {
+    return bot.sendMessage(msg.chat.id, '⚠️ Tidak ada broadcast');
+  }
+
+  clearInterval(broadcastTimer);
+  broadcastTimer = null;
+  bot.sendMessage(msg.chat.id, '🛑 Broadcast dihentikan');
+});
+
+
 
 
 
@@ -162,11 +177,18 @@ bot.onText(/\/stop/, (msg) => {
     return bot.sendMessage(msg.chat.id, '❌ Khusus admin');
   }
 
-  if (!sendInterval) {
+  if (!sendInterval && !broadcastRunning) {
     return bot.sendMessage(msg.chat.id, '⚠️ Tidak ada pengiriman aktif');
   }
 
-  sendInterval = false;
-  bot.sendMessage(msg.chat.id, '🛑 Broadcast dihentikan');
+  if (sendInterval) {
+    clearInterval(sendInterval);
+    sendInterval = null;
+  }
+
+  broadcastRunning = false;
+
+  bot.sendMessage(msg.chat.id, '🛑 Semua pengiriman dihentikan');
 });
+
 
