@@ -5,10 +5,14 @@ const db = require('./db');
 
 const app = express();
 app.use(express.json());
+
 const ADMIN_USERNAME = 'botpromomurah';
 
 
-const bot = new TelegramBot(process.env.BOT_TOKEN);
+const bot = new TelegramBot(process.env.BOT_TOKEN, {
+  webHook: true
+});
+
 
 
 bot.on('my_chat_member', (msg) => {
