@@ -1,10 +1,16 @@
 
+const express = require('express');
+const TelegramBot = require('node-telegram-bot-api');
+const db = require('./db');
+
+const app = express();
+app.use(express.json());
 
 const ADMIN_USERNAME = 'botpromomurah';
 const db = require('./db');
 const TelegramBot = require('node-telegram-bot-api');
 
-const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
+const bot = new TelegramBot(process.env.BOT_TOKEN);
 
 
 bot.on('my_chat_member', (msg) => {
@@ -145,11 +151,6 @@ bot.onText(/\/stop/, (msg) => {
   bot.sendMessage(msg.chat.id, '🛑 Broadcast dihentikan');
 });
 
-
-
-
-
-
 bot.onText(/\/addgroup (\-?\d+)/, (msg, match) => {
   if (msg.from.username !== ADMIN_USERNAME) {
     return bot.sendMessage(msg.chat.id, '❌ Khusus admin');
@@ -191,4 +192,17 @@ bot.onText(/\/stop/, (msg) => {
   bot.sendMessage(msg.chat.id, '🛑 Semua pengiriman dihentikan');
 });
 
+const PORT = process.env.PORT || 3000;
+const WEBHOOK_URL = process.env.WEBHOOK_URL;
+
+bot.setWebHook(`${WEBHOOK_URL}/bot${process.env.BOT_TOKEN}`);
+
+app.post(`/bot${process.env.BOT_TOKEN}`, (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
+});
+
+app.listen(PORT, () => {
+  console.log('🚀 Bot webhook jalan di port', PORT);
+});
 
