@@ -1,6 +1,8 @@
 
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
+const bot = new TelegramBot(process.env.BOT_TOKEN);
+
 const db = require('./db');
 const PROMO_TEXT = `
 🚀 LAGI BUTUH PROMOSI BIAR MAKIN RAMAI? 🚀
