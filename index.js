@@ -37,6 +37,7 @@ let broadcastTimer = null;
 let broadcastIndex = 0;
 let broadcastGroups = [];
 let broadcastMessage = '';
+let broadcastDelay = 5000; // default 5 detik
 
 let autoStart = null;
 let autoStop = null;
@@ -76,7 +77,8 @@ function startBroadcast() {
     if (broadcastIndex >= broadcastGroups.length) {
       broadcastIndex = 0;
     }
-  }, 5000);
+  }, broadcastDelay);
+
 }
 
 function stopBroadcast() {
@@ -197,56 +199,8 @@ bot.onText(/\/send/, (msg) => {
 
 
 
-bot.onText(/\/sendall/, (msg) => {
-  if (msg.from.username !== ADMIN_USERNAME) {
-    return bot.sendMessage(msg.chat.id, '❌ Khusus admin');
-  }
 
-  if (broadcastTimer) {
-    return bot.sendMessage(msg.chat.id, '⚠️ Broadcast sudah berjalan');
-  }
 
-  const text = msg.text.replace('/sendall', '').trim();
-
-  if (!text) {
-    return bot.sendMessage(
-      msg.chat.id,
-      '❌ Format salah\n\n/sendall\nISI PROMO'
-    );
-  }
-
-  broadcastMessage = text;
-
-  db.query('SELECT chat_id FROM telegram_groups', (err, rows) => {
-    if (err || rows.length === 0) {
-      return bot.sendMessage(msg.chat.id, '❌ Tidak ada grup');
-    }
-
-    broadcastGroups = rows;
-    broadcastIndex = 0;
-
-    broadcastTimer = setInterval(() => {
-      const groupId = broadcastGroups[broadcastIndex].chat_id;
-
-      bot.sendMessage(groupId, broadcastMessage, {
-        disable_web_page_preview: true
-      }).catch(err => {
-        console.log('❌ ERROR KIRIM KE', groupId, err.message);
-      });
-
-      broadcastIndex++;
-
-      if (broadcastIndex >= broadcastGroups.length) {
-        broadcastIndex = 0; // nonstop
-      }
-    }, 5000);
-
-    bot.sendMessage(
-      msg.chat.id,
-      `🚀 Broadcast DIMULAI ke ${rows.length} grup`
-    );
-  });
-});
 
 
 bot.onText(/\/addgroup (\-?\d+)/, (msg, match) => {
@@ -374,17 +328,27 @@ bot.onText(/\/autosendall/, (msg) => {
   if (!timeLine || !message) {
     return bot.sendMessage(
       msg.chat.id,
-      '❌ Format salah\n\n/autosendall 09:00 03:00\nISI PROMO'
+      '❌ Format salah\n\n/autosendall 09:00 03:00 10m\nISI PROMO'
     );
   }
 
-  const times = timeLine.split(' ');
-  if (times.length !== 2) {
-    return bot.sendMessage(msg.chat.id, '❌ Format jam salah');
+  const parts = timeLine.split(' ');
+  if (parts.length !== 3) {
+    return bot.sendMessage(msg.chat.id, '❌ Format jam / delay salah');
   }
 
-  autoStart = times[0];
-  autoStop = times[1];
+  autoStart = parts[0];
+  autoStop = parts[1];
+
+  const delay = parseDelay(parts[2]);
+  if (!delay) {
+    return bot.sendMessage(
+      msg.chat.id,
+      '❌ Delay tidak valid (contoh: 5s, 10m, 2h)'
+    );
+  }
+
+  broadcastDelay = delay;
   broadcastMessage = message;
 
   db.query('SELECT chat_id FROM telegram_groups', (err, rows) => {
@@ -396,12 +360,18 @@ bot.onText(/\/autosendall/, (msg) => {
     broadcastIndex = 0;
     autoEnabled = true;
 
+    // OPTIONAL: langsung jalan kalau masih di jam aktif
+    if (inTimeRange(autoStart, autoStop)) {
+      startBroadcast();
+    }
+
     bot.sendMessage(
       msg.chat.id,
-      `⏰ AUTO SENDALL AKTIF\n\nMulai: ${autoStart}\nStop: ${autoStop}\nGrup: ${rows.length}`
+      `⏰ AUTO SENDALL AKTIF\n\nMulai: ${autoStart}\nStop: ${autoStop}\nDelay: ${parts[2]}\nGrup: ${rows.length}`
     );
   });
 });
+
 
 bot.onText(/\/stopauto/, (msg) => {
   if (msg.from.username !== ADMIN_USERNAME) return;
@@ -411,3 +381,38 @@ bot.onText(/\/stopauto/, (msg) => {
 
   bot.sendMessage(msg.chat.id, '🛑 Auto sendall dihentikan');
 });
+
+function parseDelay(input) {
+  const match = input.match(/^(\d+)(s|m|h)$/i);
+  if (!match) return null;
+
+  const value = parseInt(match[1]);
+  const unit = match[2].toLowerCase();
+
+  let ms = 0;
+  if (unit === 's') ms = value * 1000;
+  if (unit === 'm') ms = value * 60 * 1000;
+  if (unit === 'h') ms = value * 60 * 60 * 1000;
+
+  const max = 24 * 60 * 60 * 1000; // 24 jam
+  if (ms < 1000 || ms > max) return null;
+
+  return ms;
+}
+
+bot.onText(/\/status/, (msg) => {
+  if (!isAdmin(msg)) return;
+
+  bot.sendMessage(
+    msg.chat.id,
+    `📊 *STATUS BOT*\n
+Auto Sendall: ${autoEnabled ? 'ON ✅' : 'OFF ❌'}
+Broadcast: ${broadcastTimer ? 'AKTIF 🚀' : 'STOP ⏹️'}
+Jam Aktif: ${autoStart || '-'} – ${autoStop || '-'}
+Delay: ${broadcastDelay / 1000}s
+Grup Terdaftar: ${broadcastGroups.length}
+`,
+    { parse_mode: 'Markdown' }
+  );
+});
+
