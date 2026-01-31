@@ -95,9 +95,15 @@ app.use(express.json());
 const ADMIN_USERNAME = 'botpromomurah';
 
 
-const bot = new TelegramBot(process.env.BOT_TOKEN, {
-  webHook: true
-});
+// ===============================
+// ADMIN SECURITY (USER ID)
+// ===============================
+const ADMIN_ID = 123456789; // GANTI DENGAN USER ID TELEGRAM LO
+
+function isAdmin(msg) {
+  return msg.from && msg.from.id === ADMIN_ID;
+}
+ 
 
 
 
@@ -415,4 +421,9 @@ Grup Terdaftar: ${broadcastGroups.length}
     { parse_mode: 'Markdown' }
   );
 });
+
+bot.on('message', (msg) => {
+  console.log('USER ID:', msg.from.id);
+});
+
 
