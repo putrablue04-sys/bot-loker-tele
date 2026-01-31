@@ -35,6 +35,7 @@ Solusi simpel buat ningkatin exposure, branding, dan penjualan tanpa ribet 💯
 `;
 
 let broadcastTimer = null;
+let broadcastTimeout = null; // ⬅️ PENTING
 let broadcastIndex = 0;
 let broadcastGroups = [];
 let broadcastMessage = '';
@@ -61,19 +62,22 @@ setInterval(() => {
 }, 60000); // cek tiap 1 menit
 
 function startBroadcast() {
-  if (broadcastTimer) return;
+  if (broadcastTimer || broadcastTimeout) return;
 
-  console.log(`⏳ Menunggu ${broadcastDelay / 1000}s sebelum kirim pertama`);
+  console.log(`⏳ Delay ${broadcastDelay / 1000}s`);
 
-  setTimeout(() => {
+  broadcastTimeout = setTimeout(() => {
     sendOnce();
 
     broadcastTimer = setInterval(() => {
       sendOnce();
     }, broadcastDelay);
 
+    broadcastTimeout = null;
+
   }, broadcastDelay);
 }
+
 
 function sendOnce() {
   if (!broadcastGroups.length) return;
