@@ -32,6 +32,26 @@ Solusi simpel buat ningkatin exposure, branding, dan penjualan tanpa ribet 💯
 ⚠️ Slot terbatas tiap hari
 ⚠️ Yang cepat booking, promonya jalan duluan 🚀🔥
 `;
+let autoStart = null;
+let autoStop = null;
+let autoEnabled = false;
+
+setInterval(() => {
+  if (!autoEnabled) return;
+
+  const allowed = inTimeRange(autoStart, autoStop);
+
+  if (allowed && !broadcastTimer) {
+    console.log('▶️ AUTO BROADCAST START');
+    startBroadcast();
+  }
+
+  if (!allowed && broadcastTimer) {
+    console.log('⏹️ AUTO BROADCAST STOP');
+    stopBroadcast();
+  }
+}, 60000); // cek tiap 1 menit
+
 
 const app = express();
 app.use(express.json());
@@ -286,4 +306,78 @@ bot.on('callback_query', (query) => {
 
     bot.answerCallbackQuery(query.id);
   }
+});
+
+function inTimeRange(start, stop) {
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = stop.split(':').map(Number);
+
+  const startMin = sh * 60 + sm;
+  const stopMin = eh * 60 + em;
+
+  // lewat tengah malam
+  if (startMin > stopMin) {
+    return nowMin >= startMin || nowMin < stopMin;
+  }
+
+  return nowMin >= startMin && nowMin < stopMin;
+}
+
+bot.onText(/\/autosendall/, (msg) => {
+  if (msg.from.username !== ADMIN_USERNAME) {
+    return bot.sendMessage(msg.chat.id, '❌ Khusus admin');
+  }
+
+  if (autoEnabled) {
+    return bot.sendMessage(msg.chat.id, '⚠️ Auto broadcast sudah aktif');
+  }
+
+  const raw = msg.text.replace('/autosendall', '').trim();
+  const lines = raw.split('\n');
+
+  const timeLine = lines.shift();
+  const message = lines.join('\n').trim();
+
+  if (!timeLine || !message) {
+    return bot.sendMessage(
+      msg.chat.id,
+      '❌ Format salah\n\n/autosendall 09:00 03:00\nISI PROMO'
+    );
+  }
+
+  const times = timeLine.split(' ');
+  if (times.length !== 2) {
+    return bot.sendMessage(msg.chat.id, '❌ Format jam salah');
+  }
+
+  autoStart = times[0];
+  autoStop = times[1];
+  broadcastMessage = message;
+
+  db.query('SELECT chat_id FROM telegram_groups', (err, rows) => {
+    if (err || rows.length === 0) {
+      return bot.sendMessage(msg.chat.id, '❌ Tidak ada grup');
+    }
+
+    broadcastGroups = rows;
+    broadcastIndex = 0;
+    autoEnabled = true;
+
+    bot.sendMessage(
+      msg.chat.id,
+      `⏰ AUTO SENDALL AKTIF\n\nMulai: ${autoStart}\nStop: ${autoStop}\nGrup: ${rows.length}`
+    );
+  });
+});
+
+bot.onText(/\/stopauto/, (msg) => {
+  if (msg.from.username !== ADMIN_USERNAME) return;
+
+  autoEnabled = false;
+  stopBroadcast();
+
+  bot.sendMessage(msg.chat.id, '🛑 Auto sendall dihentikan');
 });
