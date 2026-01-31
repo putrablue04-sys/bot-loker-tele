@@ -32,6 +32,12 @@ Solusi simpel buat ningkatin exposure, branding, dan penjualan tanpa ribet 💯
 ⚠️ Slot terbatas tiap hari
 ⚠️ Yang cepat booking, promonya jalan duluan 🚀🔥
 `;
+
+let broadcastTimer = null;
+let broadcastIndex = 0;
+let broadcastGroups = [];
+let broadcastMessage = '';
+
 let autoStart = null;
 let autoStop = null;
 let autoEnabled = false;
@@ -51,6 +57,34 @@ setInterval(() => {
     stopBroadcast();
   }
 }, 60000); // cek tiap 1 menit
+
+function startBroadcast() {
+  if (broadcastTimer) return;
+
+  broadcastTimer = setInterval(() => {
+    if (!broadcastGroups.length) return;
+
+    const groupId = broadcastGroups[broadcastIndex].chat_id;
+
+    bot.sendMessage(groupId, broadcastMessage, {
+      disable_web_page_preview: true
+    }).catch(err => {
+      console.log('❌ ERROR KIRIM KE', groupId, err.message);
+    });
+
+    broadcastIndex++;
+    if (broadcastIndex >= broadcastGroups.length) {
+      broadcastIndex = 0;
+    }
+  }, 5000);
+}
+
+function stopBroadcast() {
+  if (!broadcastTimer) return;
+
+  clearInterval(broadcastTimer);
+  broadcastTimer = null;
+}
 
 
 const app = express();
@@ -85,7 +119,7 @@ bot.on('my_chat_member', (msg) => {
 // VAR GLOBAL (SATU KALI SAJA)
 // ===============================
 let sendInterval = null;     // khusus /send (single group)
-let broadcastRunning = false; // khusus /sendall
+
 
 
 // ===============================
@@ -161,10 +195,7 @@ bot.onText(/\/send/, (msg) => {
 });
 
 
-let broadcastTimer = null;
-let broadcastIndex = 0;
-let broadcastGroups = [];
-let broadcastMessage = '';
+
 
 bot.onText(/\/sendall/, (msg) => {
   if (msg.from.username !== ADMIN_USERNAME) {
@@ -241,23 +272,19 @@ bot.onText(/\/addgroup (\-?\d+)/, (msg, match) => {
 // STOP KIRIM PROMO
 // ===============================
 bot.onText(/\/stop/, (msg) => {
-  if (msg.from.username !== ADMIN_USERNAME) {
-    return bot.sendMessage(msg.chat.id, '❌ Khusus admin');
-  }
-
-  if (!sendInterval && !broadcastRunning) {
-    return bot.sendMessage(msg.chat.id, '⚠️ Tidak ada pengiriman aktif');
-  }
+  if (msg.from.username !== ADMIN_USERNAME) return;
 
   if (sendInterval) {
     clearInterval(sendInterval);
     sendInterval = null;
   }
 
-  broadcastRunning = false;
+  autoEnabled = false;
+  stopBroadcast();
 
-  bot.sendMessage(msg.chat.id, '🛑 Semua pengiriman dihentikan');
+  bot.sendMessage(msg.chat.id, '🛑 Semua pengiriman & auto dihentikan');
 });
+
 
 const PORT = process.env.PORT || 3000;
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
@@ -325,6 +352,9 @@ function inTimeRange(start, stop) {
 
   return nowMin >= startMin && nowMin < stopMin;
 }
+
+
+
 
 bot.onText(/\/autosendall/, (msg) => {
   if (msg.from.username !== ADMIN_USERNAME) {
