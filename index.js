@@ -2,7 +2,6 @@
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
 const bot = new TelegramBot(process.env.BOT_TOKEN);
-
 const db = require('./db');
 const PROMO_TEXT = `
 🚀 LAGI BUTUH PROMOSI BIAR MAKIN RAMAI? 🚀
@@ -100,7 +99,7 @@ const ADMIN_USERNAME = 'botpromomurah';
 // ===============================
 // ADMIN SECURITY (USER ID)
 // ===============================
-const ADMIN_ID = 123456789; // GANTI DENGAN USER ID TELEGRAM LO
+const ADMIN_ID = 8376994070; // GANTI DENGAN USER ID TELEGRAM LO
 
 function isAdmin(msg) {
   return msg.from && msg.from.id === ADMIN_ID;
