@@ -63,24 +63,35 @@ setInterval(() => {
 function startBroadcast() {
   if (broadcastTimer) return;
 
-  broadcastTimer = setInterval(() => {
-    if (!broadcastGroups.length) return;
+  console.log(`⏳ Menunggu ${broadcastDelay / 1000}s sebelum kirim pertama`);
 
-    const groupId = broadcastGroups[broadcastIndex].chat_id;
+  setTimeout(() => {
+    sendOnce();
 
-    bot.sendMessage(groupId, broadcastMessage, {
-      disable_web_page_preview: true
-    }).catch(err => {
-      console.log('❌ ERROR KIRIM KE', groupId, err.message);
-    });
+    broadcastTimer = setInterval(() => {
+      sendOnce();
+    }, broadcastDelay);
 
-    broadcastIndex++;
-    if (broadcastIndex >= broadcastGroups.length) {
-      broadcastIndex = 0;
-    }
   }, broadcastDelay);
-
 }
+
+function sendOnce() {
+  if (!broadcastGroups.length) return;
+
+  const groupId = broadcastGroups[broadcastIndex].chat_id;
+
+  bot.sendMessage(groupId, broadcastMessage, {
+    disable_web_page_preview: true
+  }).catch(err => {
+    console.log('❌ ERROR KIRIM KE', groupId, err.message);
+  });
+
+  broadcastIndex++;
+  if (broadcastIndex >= broadcastGroups.length) {
+    broadcastIndex = 0;
+  }
+}
+
 
 function stopBroadcast() {
   if (!broadcastTimer) return;
