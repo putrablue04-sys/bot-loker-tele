@@ -206,6 +206,41 @@ bot.onText(/\/send/, (msg) => {
 
 
 
+bot.onText(/\/sendall (\S+)/, (msg, match) => {
+  if (!isAdmin(msg)) return;
+
+  if (broadcastTimer) {
+    return bot.sendMessage(msg.chat.id, '⚠️ Sendall sedang berjalan');
+  }
+
+  const delay = parseDelay(match[1]);
+  if (!delay) {
+    return bot.sendMessage(msg.chat.id, '❌ Delay tidak valid');
+  }
+
+  const message = msg.text.split('\n').slice(1).join('\n').trim();
+  if (!message) {
+    return bot.sendMessage(msg.chat.id, '❌ Pesan kosong');
+  }
+
+  db.query('SELECT chat_id FROM telegram_groups', (err, rows) => {
+    if (err || rows.length === 0) {
+      return bot.sendMessage(msg.chat.id, '❌ Tidak ada grup');
+    }
+
+    broadcastGroups = rows;
+    broadcastIndex = 0;
+    broadcastDelay = delay;
+    broadcastMessage = message;
+
+    startBroadcast();
+
+    bot.sendMessage(
+      msg.chat.id,
+      `🚀 SENDALL AKTIF\nDelay: ${delay / 1000}s\nGrup: ${rows.length}`
+    );
+  });
+});
 
 
 
