@@ -75,7 +75,7 @@ bot.onText(/\/groups/, (msg) => {
 // ===============================
 // START KIRIM PROMO
 // ===============================
-bot.onText(/\/send (\-?\d+) (.+)/, (msg, match) => {
+bot.onText(/\/send/, (msg) => {
   if (msg.from.username !== ADMIN_USERNAME) {
     return bot.sendMessage(msg.chat.id, '❌ Khusus admin');
   }
@@ -84,17 +84,28 @@ bot.onText(/\/send (\-?\d+) (.+)/, (msg, match) => {
     return bot.sendMessage(msg.chat.id, '⚠️ Pengiriman sedang berjalan. /stop dulu.');
   }
 
-  const groupId = match[1];
-  const pesan = match[2];
+  const text = msg.text.replace('/send', '').trim();
+
+  const lines = text.split('\n');
+  const groupId = lines.shift().trim();
+  const pesan = lines.join('\n').trim();
+
+  if (!groupId || !pesan) {
+    return bot.sendMessage(
+      msg.chat.id,
+      '❌ Format salah\n\n/send ID_GRUP\nISI PROMO'
+    );
+  }
 
   sendInterval = setInterval(() => {
-    bot.sendMessage(groupId, pesan).catch(() => {
+    bot.sendMessage(groupId, pesan, {
+      disable_web_page_preview: true
+    }).catch(() => {
       bot.sendMessage(msg.chat.id, '❌ Gagal kirim. Bot belum admin / ID salah.');
       clearInterval(sendInterval);
       sendInterval = null;
     });
   }, 5000);
-
 
   bot.sendMessage(msg.chat.id, `🚀 Mulai kirim ke ${groupId} tiap 5 detik`);
 });
