@@ -152,18 +152,6 @@ bot.onText(/\/sendall (.+)/, (msg, match) => {
   });
 });
 
-bot.onText(/\/stop/, (msg) => {
-  if (msg.from.username !== ADMIN_USERNAME) return;
-
-  if (!broadcastTimer) {
-    return bot.sendMessage(msg.chat.id, '⚠️ Tidak ada broadcast');
-  }
-
-  clearInterval(broadcastTimer);
-  broadcastTimer = null;
-  bot.sendMessage(msg.chat.id, '🛑 Broadcast dihentikan');
-});
-
 bot.onText(/\/addgroup (\-?\d+)/, (msg, match) => {
   if (msg.from.username !== ADMIN_USERNAME) {
     return bot.sendMessage(msg.chat.id, '❌ Khusus admin');
