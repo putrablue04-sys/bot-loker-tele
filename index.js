@@ -2,6 +2,36 @@
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
 const db = require('./db');
+const PROMO_TEXT = `
+🚀 LAGI BUTUH PROMOSI BIAR MAKIN RAMAI? 🚀
+
+Capek posting tapi respon sepi? Reach mentok?
+Saatnya pakai cara yang lebih efektif 🔥
+
+Kami buka JASA SEBAR PROMOSI / IKLAN
+Solusi simpel buat ningkatin exposure, branding, dan penjualan tanpa ribet 💯
+
+💰 Harga super terjangkau:
+• 1 hari ➜ 10K
+• 2 hari ➜ 20K
+• 3 hari ➜ 30K
+• 4 hari ➜ 40K
+• 5 hari ➜ 50K
+
+⏳ Makin lama durasi sebar, makin kerasa hasilnya 📈
+
+✨ Keunggulan layanan:
+✅ Sebar rapi & konsisten
+✅ Cocok buat jualan, channel, jasa, event, komunitas
+✅ Bisa request jam sebar ⏰
+✅ Aman, praktis, no ribet
+
+📩 Minat? Langsung chat admin!
+👉 @Imperiuslux
+
+⚠️ Slot terbatas tiap hari
+⚠️ Yang cepat booking, promonya jalan duluan 🚀🔥
+`;
 
 const app = express();
 app.use(express.json());
@@ -116,7 +146,7 @@ let broadcastIndex = 0;
 let broadcastGroups = [];
 let broadcastMessage = '';
 
-bot.onText(/\/sendall (.+)/, (msg, match) => {
+bot.onText(/\/sendall/, (msg) => {
   if (msg.from.username !== ADMIN_USERNAME) {
     return bot.sendMessage(msg.chat.id, '❌ Khusus admin');
   }
@@ -125,7 +155,16 @@ bot.onText(/\/sendall (.+)/, (msg, match) => {
     return bot.sendMessage(msg.chat.id, '⚠️ Broadcast sudah berjalan');
   }
 
-  broadcastMessage = match[1];
+  const text = msg.text.replace('/sendall', '').trim();
+
+  if (!text) {
+    return bot.sendMessage(
+      msg.chat.id,
+      '❌ Format salah\n\n/sendall\nISI PROMO'
+    );
+  }
+
+  broadcastMessage = text;
 
   db.query('SELECT chat_id FROM telegram_groups', (err, rows) => {
     if (err || rows.length === 0) {
@@ -137,20 +176,27 @@ bot.onText(/\/sendall (.+)/, (msg, match) => {
 
     broadcastTimer = setInterval(() => {
       const groupId = broadcastGroups[broadcastIndex].chat_id;
-      console.log('📤 SEND KE', groupId);
 
-      bot.sendMessage(groupId, broadcastMessage)
-        .catch(err => console.log('❌ ERROR', err.message));
+      bot.sendMessage(groupId, broadcastMessage, {
+        disable_web_page_preview: true
+      }).catch(err => {
+        console.log('❌ ERROR KIRIM KE', groupId, err.message);
+      });
 
       broadcastIndex++;
+
       if (broadcastIndex >= broadcastGroups.length) {
-        broadcastIndex = 0;
+        broadcastIndex = 0; // nonstop
       }
     }, 5000);
 
-    bot.sendMessage(msg.chat.id, '🚀 Broadcast nonstop DIMULAI');
+    bot.sendMessage(
+      msg.chat.id,
+      `🚀 Broadcast DIMULAI ke ${rows.length} grup`
+    );
   });
 });
+
 
 bot.onText(/\/addgroup (\-?\d+)/, (msg, match) => {
   if (msg.from.username !== ADMIN_USERNAME) {
@@ -207,3 +253,37 @@ app.listen(PORT, () => {
   console.log('🚀 Bot webhook jalan di port', PORT);
 });
 
+bot.onText(/\/start/, (msg) => {
+  bot.sendMessage(
+    msg.chat.id,
+    '👋 Selamat datang!\n\nKlik tombol di bawah untuk melihat info promosi 👇',
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '🚀 LIHAT PROMOSI', callback_data: 'lihat_promo' }
+          ]
+        ]
+      }
+    }
+  );
+});
+
+bot.on('callback_query', (query) => {
+  const chatId = query.message.chat.id;
+
+  if (query.data === 'lihat_promo') {
+    bot.sendMessage(chatId, PROMO_TEXT, {
+      disable_web_page_preview: true,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '💬 Hubungi Admin', url: 'https://t.me/Imperiuslux' }
+          ]
+        ]
+      }
+    });
+
+    bot.answerCallbackQuery(query.id);
+  }
+});
