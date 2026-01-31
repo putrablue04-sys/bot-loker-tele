@@ -98,11 +98,17 @@ function sendOnce() {
 
 
 function stopBroadcast() {
-  if (!broadcastTimer) return;
+  if (broadcastTimer) {
+    clearInterval(broadcastTimer);
+    broadcastTimer = null;
+  }
 
-  clearInterval(broadcastTimer);
-  broadcastTimer = null;
+  if (broadcastTimeout) {
+    clearTimeout(broadcastTimeout);
+    broadcastTimeout = null;
+  }
 }
+
 
 
 const app = express();
@@ -183,7 +189,7 @@ bot.onText(/\/groups/, (msg) => {
 // ===============================
 // START KIRIM PROMO
 // ===============================
-bot.onText(/\/send/, (msg) => {
+bot.onText(/\/send (\S+) (\-?\d+)/, (msg, match) => {
   if (msg.from.username !== ADMIN_USERNAME) {
     return bot.sendMessage(msg.chat.id, '❌ Khusus admin');
   }
@@ -192,31 +198,33 @@ bot.onText(/\/send/, (msg) => {
     return bot.sendMessage(msg.chat.id, '⚠️ Pengiriman sedang berjalan. /stop dulu.');
   }
 
-  const text = msg.text.replace('/send', '').trim();
+  const delay = parseDelay(match[1]);
+  const groupId = match[2];
 
-  const lines = text.split('\n');
-  const groupId = lines.shift().trim();
-  const pesan = lines.join('\n').trim();
+  if (!delay) {
+    return bot.sendMessage(msg.chat.id, '❌ Delay tidak valid (contoh: 5s, 10m)');
+  }
 
-  if (!groupId || !pesan) {
-    return bot.sendMessage(
-      msg.chat.id,
-      '❌ Format salah\n\n/send ID_GRUP\nISI PROMO'
-    );
+  const pesan = msg.text.split('\n').slice(1).join('\n').trim();
+  if (!pesan) {
+    return bot.sendMessage(msg.chat.id, '❌ Pesan kosong');
   }
 
   sendInterval = setInterval(() => {
     bot.sendMessage(groupId, pesan, {
       disable_web_page_preview: true
     }).catch(() => {
-      bot.sendMessage(msg.chat.id, '❌ Gagal kirim. Bot belum admin / ID salah.');
       clearInterval(sendInterval);
       sendInterval = null;
     });
-  }, 5000);
+  }, delay);
 
-  bot.sendMessage(msg.chat.id, `🚀 Mulai kirim ke ${groupId} tiap 5 detik`);
+  bot.sendMessage(
+    msg.chat.id,
+    `🚀 Mulai kirim ke ${groupId}\nDelay: ${delay / 1000}s`
+  );
 });
+
 
 
 
